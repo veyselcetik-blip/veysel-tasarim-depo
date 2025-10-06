@@ -1,0 +1,9 @@
+# Cron klasörüne web erişimini engelle
+<IfModule mod_rewrite.c>
+    RewriteEngine on
+    RewriteRule ^cron/ - [F,L]
+</IfModule>
+
+# Hata sayfaları (isteğe bağlı)
+ErrorDocument 404 /404.php
+ErrorDocument 403 /403.php

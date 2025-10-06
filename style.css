@@ -1,0 +1,99 @@
+/* Google Font Import */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+/* ========================================= */
+/* TEMEL DEĞİŞKENLER VE TASARIM PALETİ        */
+/* ========================================= */
+:root {
+  --primary-color: #0d6efd; /* Ana Renk - Canlı Mavi */
+  --secondary-color: #6c757d; /* İkincil Renk - Gri */
+  --success-color: #198754; /* Başarı Rengi - Yeşil */
+  --light-gray: #f8f9fa;
+  --dark-blue: #212529;
+  --card-shadow: 0 4px 15px rgba(0, 0, 0, 0.07);
+  --border-radius: 0.75rem;
+  --font-family: 'Poppins', sans-serif;
+}
+
+/* ========================================= */
+/* GENEL SAYFA STİLLERİ                      */
+/* ========================================= */
+body {
+  font-family: var(--font-family);
+  background-color: var(--light-gray);
+  color: #333;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+main.container {
+    flex-grow: 1;
+}
+
+/* ========================================= */
+/* NAVBAR (MENÜ) İYİLEŞTİRMELERİ           */
+/* ========================================= */
+.navbar-dark {
+    background-color: var(--dark-blue) !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Menüdeki standart linkleri daha görünür yap (SÖNÜK LİNK SORUNU ÇÖZÜMÜ) */
+.navbar-dark .navbar-nav .nav-link {
+  color: rgba(255, 255, 255, 0.85); /* Normalde 0.55'tir, daha görünür yaptık */
+  transition: color 0.2s ease-in-out;
+  font-weight: 500;
+}
+
+.navbar-dark .navbar-nav .nav-link:hover,
+.navbar-dark .navbar-nav .nav-link:focus,
+.navbar-dark .navbar-nav .nav-link.active {
+  color: #ffffff; /* Üzerine gelince tam beyaz yap */
+}
+
+/* ========================================= */
+/* KART TASARIMLARI                         */
+/* ========================================= */
+.card {
+  border: none;
+  border-radius: var(--border-radius);
+  box-shadow: var(--card-shadow);
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    background-color: #ffffff;
+    border-bottom: 1px solid #e9ecef;
+}
+
+/* ========================================= */
+/* BUTON VE FORM ELEMANLARI                  */
+/* ========================================= */
+.btn {
+  border-radius: 0.5rem;
+  font-weight: 500;
+  padding: 0.6rem 1.2rem;
+  transition: all 0.2s ease-in-out;
+}
+
+.form-control, .form-select {
+  border-radius: 0.5rem;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: rgba(var(--bs-primary-rgb), 0.5);
+  box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
+}
+
+/* ========================================= */
+/* FOOTER (ALT BİLGİ)                        */
+/* ========================================= */
+footer {
+    background-color: var(--dark-blue) !important;
+}
