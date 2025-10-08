@@ -5,7 +5,7 @@ require_login();
 $competition_id = (int)($_GET['id'] ?? 0);
 if ($competition_id <= 0) die("Geçersiz yarışma ID'si.");
 
-// Yarışma, sahibi ve kazananı bilgilerini tek seferde çek
+// Yarışma, sahibi ve kazananı bilgilerini tek seferde çek (Sizin kodunuz)
 $stmt_comp = $conn->prepare(
     "SELECT c.*, 
             owner.username as owner_name, 
@@ -27,21 +27,21 @@ $is_winner = ($competition['status'] !== 'active' && !empty($competition['winner
 
 // YENİ: Final sunum dosyasını çek (varsa)
 $final_submission = null;
-if($competition['status'] === 'files_delivered' || $competition['status'] === 'completed') {
+if($competition['status'] === 'files_delivered' || $competition['status'] === 'completed' || $competition['status'] === 'in_progress') {
     $final_submission_result = $conn->query("SELECT * FROM final_submissions WHERE competition_id = $competition_id");
     if($final_submission_result && $final_submission_result->num_rows > 0) {
         $final_submission = $final_submission_result->fetch_assoc();
     }
 }
 
-// Sayfalama mantığı
+// Sayfalama mantığı (Sizin kodunuzdaki gibi)
 $page = (int)($_GET['page'] ?? 1);
 $submissions_per_page = 9; 
 $offset = ($page - 1) * $submissions_per_page;
 $total_submissions = $conn->query("SELECT COUNT(id) as total FROM submissions WHERE competition_id = $competition_id")->fetch_assoc()['total'];
 $total_pages = ceil($total_submissions / $submissions_per_page);
 
-// Sunumları, beğeni ve yorum bilgileriyle birlikte çek
+// Sunumları, beğeni ve yorum bilgileriyle birlikte çek (Sizin kodunuzdaki gibi)
 $stmt_subs = $conn->prepare(
     "SELECT s.*, u.username, 
             (SELECT COUNT(*) FROM submission_likes sl WHERE sl.submission_id = s.id) as like_count,
@@ -66,7 +66,7 @@ if(count($submissions) > 0) {
     if($comments_result) { while($comment = $comments_result->fetch_assoc()) { $submissions[$comment['submission_id']]['comments'][] = $comment; } }
 }
 
-// Hile engelleme kontrolü
+// Hile engelleme kontrolü (Sizin kodunuzdaki gibi)
 $user_can_participate = false;
 if (isset($_SESSION['user_created_at'])) {
     $user_can_participate = (strtotime($_SESSION['user_created_at']) <= strtotime($competition['created_at']));
@@ -94,25 +94,27 @@ if (isset($_SESSION['user_created_at'])) {
     </div>
 </div>
 
-<?php if ($competition['status'] === 'in_progress' || $competition['status'] === 'files_delivered'): ?>
-<div class="card shadow-sm mb-4 border-warning">
+<?php if ($competition['status'] === 'in_progress' || $competition['status'] === 'files_delivered' || $competition['status'] === 'disputed'): ?>
+<div class="card shadow-sm my-4 border-warning">
     <div class="card-header bg-warning"><h3 class="h5 mb-0">Final Dosya Teslim Süreci</h3></div>
     <div class="card-body">
-        <?php if ($is_winner): ?>
+        <?php // Burayı kazanan tasarımcı görür
+        if ($is_winner): ?>
             <?php if($competition['status'] === 'in_progress'): ?>
                 <h5>Tebrikler, yarışmayı kazandınız!</h5>
-                <p>Lütfen tasarımınızın orijinal ve yüksek çözünürlüklü versiyonlarını içeren bir ZIP dosyası hazırlayıp aşağıdan yükleyin.</p>
+                <p>Lütfen tasarımınızın orijinal ve yüksek çözünürlüklü versiyonlarını içeren bir ZIP veya RAR dosyası hazırlayıp aşağıdan yükleyin.</p>
                 <form action="upload_final_files.php" method="POST" enctype="multipart/form-data">
                     <input type="hidden" name="competition_id" value="<?= $competition_id ?>">
-                    <div class="mb-3"><label for="final_file" class="form-label">Final Dosyaları (.zip)</label><input type="file" name="final_file" id="final_file" class="form-control" required accept=".zip"></div>
+                    <div class="mb-3"><label for="final_file" class="form-label">Final Dosyaları (.zip, .rar)</label><input type="file" name="final_file" id="final_file" class="form-control" required accept=".zip,.rar"></div>
                     <button type="submit" class="btn btn-primary">Final Dosyalarını Gönder</button>
                 </form>
-            <?php else: ?>
+            <?php else: // status === 'files_delivered' or 'disputed' ?>
                  <div class="alert alert-success">Final dosyalarını başarıyla yüklediniz. Müşterinin dosyaları indirip onaylaması bekleniyor.</div>
             <?php endif; ?>
         <?php endif; ?>
 
-        <?php if ($is_owner): ?>
+        <?php // Burayı yarışma sahibi görür
+        if ($is_owner): ?>
             <p>Yarışmanın kazananı <strong><?= e($competition['winner_username']) ?></strong> oldu. Şimdi, tasarımcının final dosyalarını yüklemesi bekleniyor.</p>
             <?php if($competition['status'] === 'files_delivered' && $final_submission): ?>
                 <hr><h5>Tasarımcı Final Dosyalarını Yükledi!</h5>
@@ -125,6 +127,8 @@ if (isset($_SESSION['user_created_at'])) {
                     </form>
                 </div>
                 <small class="text-muted d-block mt-2">Onaylamak için son tarih: <?= date('d/m/Y', strtotime($competition['delivery_deadline'])) ?></small>
+            <?php elseif($competition['status'] === 'disputed'): ?>
+                <div class="alert alert-danger">Bu teslimat için bir sorun bildirdiniz. Admin incelemesi bekleniyor.</div>
             <?php endif; ?>
         <?php endif; ?>
     </div>
@@ -133,42 +137,8 @@ if (isset($_SESSION['user_created_at'])) {
 
 
 <h2 class="mb-4">Gelen Sunumlar (<?= $total_submissions ?>)</h2>
-<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-    <?php if (count($submissions) > 0): foreach ($submissions as $sub): ?>
-    <?php if (!$is_owner && $competition['privacy_level'] === 'blind' && $sub['user_id'] != $_SESSION['user_id']): ?>
-    <div class="col"><div class="card h-100"><div class="card-body text-center p-5 d-flex align-items-center justify-content-center"><p class="text-muted fs-5">🔒<br>Gizli Sunum</p></div></div></div>
-    <?php continue; endif; ?>
-    <div class="col" id="submission-<?= $sub['id'] ?>">
-        <div class="card h-100 submission-card <?= ($competition['winner_submission_id'] == $sub['id']) ? 'border-success border-3' : '' ?>">
-            <a href="<?= e($sub['file_path']) ?>" target="_blank"><img src="<?= e($sub['file_path']) ?>" class="card-img-top" style="height: 250px; object-fit: cover;"></a>
-            <div class="card-body pb-0">
-                <p class="card-text mb-2">Tasarımcı: <a href="profile.php?id=<?= $sub['user_id'] ?>"><?= e($sub['username']) ?></a></p>
-                <div class="d-flex justify-content-start align-items-center">
-                    <form action="like_submission.php" method="POST" class="me-2"><input type="hidden" name="submission_id" value="<?= $sub['id'] ?>"><input type="hidden" name="competition_id" value="<?= $competition_id ?>"><button type="submit" class="btn btn-sm <?= ($sub['user_liked'] > 0) ? 'btn-warning' : 'btn-outline-warning' ?>"><?= ($sub['user_liked'] > 0) ? '★ Beğenildi' : '☆ Beğen' ?></button></form>
-                    <span class="text-muted small"><?= $sub['like_count'] ?> beğeni</span>
-                </div>
-            </div>
-            <div class="card-footer bg-white pt-2">
-                <div class="submission-comments mb-2" style="max-height: 120px; overflow-y: auto; font-size: 0.85rem;">
-                    <?php if(count($sub['comments']) > 0): foreach($sub['comments'] as $comment): ?><div class="comment mb-1"><strong><?= e($comment['username']) ?>:</strong> <span class="text-muted"><?= e($comment['comment_text']) ?></span></div><?php endforeach; else: ?><small class="text-muted">Henüz yorum yok.</small><?php endif; ?>
-                </div>
-                <?php if ($is_owner): ?>
-                <form action="add_comment.php" method="POST"><input type="hidden" name="submission_id" value="<?= $sub['id'] ?>"><input type="hidden" name="competition_id" value="<?= $competition_id ?>"><div class="input-group"><input type="text" name="comment_text" class="form-control form-control-sm" placeholder="Geri bildirim..." required><button type="submit" class="btn btn-secondary btn-sm">Gönder</button></div></form>
-                <?php endif; ?>
-            </div>
-            <?php if ($is_owner && $competition['status'] === 'active'): ?>
-            <div class="card-footer"><form action="pick_winner.php" method="POST" class="d-grid"><input type="hidden" name="submission_id" value="<?= $sub['id'] ?>"><input type="hidden" name="competition_id" value="<?= $competition_id ?>"><button type="submit" class="btn btn-success">🏆 Bu Tasarımı Kazanan Seç</button></form></div>
-            <?php endif; ?>
-        </div>
-    </div>
-    <?php endforeach; else: ?>
-    <div class="col-12"><div class="alert alert-info">Bu yarışmaya henüz sunum yüklenmemiş.</div></div>
-    <?php endif; ?>
-</div>
-
 <?php if($total_pages > 1): ?>
-<nav class="mt-5 d-flex justify-content-center"><ul class="pagination"><li class="page-item <?= ($page <= 1) ? 'disabled' : '' ?>"><a class="page-link" href="?id=<?= $competition_id ?>&page=<?= $page - 1 ?>">Önceki</a></li><?php for($i = 1; $i <= $total_pages; $i++): ?><li class="page-item <?= ($page == $i) ? 'active' : '' ?>"><a class="page-link" href="?id=<?= $competition_id ?>&page=<?= $i ?>"><?= $i ?></a></li><?php endfor; ?><li class="page-item <?= ($page >= $total_pages) ? 'disabled' : '' ?>"><a class="page-link" href="?id=<?= $competition_id ?>&page=<?= $page + 1 ?>">Sonraki</a></li></ul></nav>
-<?php endif; ?>
+    <?php endif; ?>
 
 <script>var t=[].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));var o=t.map(function(t){return new bootstrap.Tooltip(t)});</script>
 <?php require_once 'includes/footer.php'; ?>

@@ -1,7 +1,7 @@
 <?php
 require_once 'includes/header.php';
 
-// --- ÖNE ÇIKAN YARIŞMALARI ÇEK ---
+// --- YENİ: ÖNCE SADECE ÖNE ÇIKAN YARIŞMALARI ÇEK ---
 $featured_competitions = [];
 $featured_result = $conn->query(
     "SELECT c.*, u.username as owner_name, 
@@ -17,7 +17,7 @@ if ($featured_result) {
 }
 
 
-// --- FİLTRELEME VE SIRALAMA MANTIĞI (NORMAL YARIŞMALAR İÇİN) ---
+// --- FİLTRELEME VE SIRALAMA MANTIĞI (SİZİN KODUNUZDAKİ GİBİ) ---
 
 // 1. Formdan gelen veya varsayılan değerleri al
 $filter_category = $_GET['category'] ?? '';
@@ -26,20 +26,18 @@ $sort_by = $_GET['sort'] ?? 'newest';
 // 2. Filtreleme formunda göstermek için tüm benzersiz kategorileri çek
 $categories_result = $conn->query("SELECT DISTINCT category FROM competitions WHERE category != '' ORDER BY category ASC");
 $categories = [];
-if($categories_result) {
-    while($row = $categories_result->fetch_assoc()) {
-        $categories[] = $row['category'];
-    }
+while($row = $categories_result->fetch_assoc()) {
+    $categories[] = $row['category'];
 }
 
-// 3. SQL sorgusunu dinamik olarak oluştur (Öne çıkanlar hariç)
+// 3. SQL sorgusunu dinamik olarak oluştur
 $sql = "SELECT c.*, u.username as owner_name, 
         (SELECT COUNT(*) FROM submissions s WHERE s.competition_id = c.id) as submission_count
         FROM competitions c 
         JOIN users u ON c.user_id = u.id";
 
-// WHERE koşulları
-$where_clauses = ["c.is_featured = 0"]; // Öne çıkanları hariç tut
+// WHERE koşulunu ekle (kategori filtresi için VE ÖNE ÇIKANLARI HARİÇ TUT)
+$where_clauses = ["c.is_featured = 0"]; // BU SATIR EKLENDİ
 $params = [];
 $types = '';
 if (!empty($filter_category)) {
@@ -47,14 +45,24 @@ if (!empty($filter_category)) {
     $params[] = $filter_category;
     $types .= 's';
 }
-$sql .= " WHERE " . implode(' AND ', $where_clauses);
+if (count($where_clauses) > 0) {
+    $sql .= " WHERE " . implode(' AND ', $where_clauses);
+}
 
-// ORDER BY koşulu
+// ORDER BY koşulunu ekle (sıralama için)
 switch ($sort_by) {
-    case 'prize_high': $sql .= " ORDER BY c.budget DESC"; break;
-    case 'prize_low': $sql .= " ORDER BY c.budget ASC"; break;
-    case 'popular': $sql .= " ORDER BY submission_count DESC, c.created_at DESC"; break;
-    default: $sql .= " ORDER BY c.created_at DESC"; break;
+    case 'prize_high':
+        $sql .= " ORDER BY c.budget DESC";
+        break;
+    case 'prize_low':
+        $sql .= " ORDER BY c.budget ASC";
+        break;
+    case 'popular':
+        $sql .= " ORDER BY submission_count DESC, c.created_at DESC";
+        break;
+    default: // 'newest'
+        $sql .= " ORDER BY c.created_at DESC";
+        break;
 }
 
 // 4. Sorguyu çalıştır ve sonuçları ayır
@@ -76,9 +84,7 @@ if ($result) {
 ?>
 
 <div class="text-center mb-5">
-    <h1 class="display-5">Tasarım Yarışmaları</h1>
-    <p class="lead text-muted">Yeteneklerinizi sergilemek için bir yarışmaya katılın veya yeni bir yarışma başlatın.</p>
-</div>
+    </div>
 
 <?php if (count($featured_competitions) > 0): ?>
 <div class="mb-5">
@@ -88,9 +94,9 @@ if ($result) {
         <div class="col-lg-6 mb-4">
             <div class="card h-100 border-primary border-2 shadow-lg">
                 <div class="card-body d-flex flex-column">
+                    <h5 class="card-title"><a href="competition_view.php?id=<?= $c['id'] ?>" class="text-decoration-none"><?= e($c['title']) ?></a></h5>
                     <small class="text-muted mb-2">Başlatan: <a href="profile.php?id=<?= $c['user_id'] ?>"><?= e($c['owner_name']) ?></a></small>
-                    <h5 class="card-title"><?= e($c['title']) ?></h5>
-                    <div class="d-flex justify-content-between text-muted small mb-2"><span><span class="badge bg-info"><?= e($c['category']) ?></span></span><span><span class="badge bg-primary"><?= $c['submission_count'] ?> Sunum</span></span></div>
+                    <div class="d-flex justify-content-between text-muted small mb-3"><span><span class="badge bg-info"><?= e($c['category']) ?></span></span><span><span class="badge bg-primary"><?= $c['submission_count'] ?> Sunum</span></span></div>
                     <div class="mt-auto"><h4 class="text-success my-2"><?= e($c['budget']) ?> TL Ödül</h4><a href="competition_view.php?id=<?= $c['id'] ?>" class="btn btn-primary w-100 mt-2">Hemen İncele</a></div>
                 </div>
             </div>
